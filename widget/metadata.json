@@ -1,0 +1,14 @@
+{
+    "KPackageStructure": "Plasma/Applet",
+    "KPlugin": {
+        "Authors": [{ "Name": "LousySniper" }],
+        "Category": "Windows and Tasks",
+        "Description": "Buttons and a slider to change layout, window sizes and order for the Alternating Master Stack KWin script",
+        "Icon": "view-grid",
+        "Id": "org.alternatingmasterstack.panel",
+        "License": "GPL-3.0-or-later",
+        "Name": "Tiling Controls",
+        "Version": "0.1"
+    },
+    "X-Plasma-API-Minimum-Version": "6.0"
+}

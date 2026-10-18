@@ -1,0 +1,16 @@
+name: tests
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm test
+      - name: Shell scripts parse
+        run: bash -n install.sh && bash -n uninstall.sh
+      - name: Package files are valid
+        run: |
+          python3 -c "import json,xml.dom.minidom as m; json.load(open('script/metadata.json')); json.load(open('widget/metadata.json')); m.parse('script/contents/config/main.xml'); m.parse('script/contents/ui/config.ui')"

@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kcfg xmlns="http://www.kde.org/standards/kcfg/1.0"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://www.kde.org/standards/kcfg/1.0 http://www.kde.org/standards/kcfg/1.0/kcfg.xsd">
+    <kcfgfile name=""/>
+
+    <group name="">
+        <entry name="floatFileManagers" type="Bool">
+            <label>File managers open floating</label>
+            <default>true</default>
+        </entry>
+        <entry name="floatTerminals" type="Bool">
+            <label>Terminals open floating</label>
+            <default>true</default>
+        </entry>
+        <entry name="floatSystemTools" type="Bool">
+            <label>Settings and system tools open floating</label>
+            <default>true</default>
+        </entry>
+        <entry name="floatSoftwareCentres" type="Bool">
+            <label>Software centres open floating</label>
+            <default>true</default>
+        </entry>
+        <entry name="floatDevicePanels" type="Bool">
+            <label>Audio, network and device panels open floating</label>
+            <default>true</default>
+        </entry>
+        <entry name="floatMusicPlayers" type="Bool">
+            <label>Music players open floating</label>
+            <default>true</default>
+        </entry>
+        <entry name="floatVideoPlayers" type="Bool">
+            <label>Video players open floating</label>
+            <default>true</default>
+        </entry>
+        <entry name="floatTextOpeners" type="Bool">
+            <label>Quick text openers (not IDEs) open floating</label>
+            <default>true</default>
+        </entry>
+        <entry name="floatPhotoViewers" type="Bool">
+            <label>Photo viewers open floating</label>
+            <default>true</default>
+        </entry>
+        <entry name="floatQuickTools" type="Bool">
+            <label>Screenshot, picker and clipboard tools open floating</label>
+            <default>true</default>
+        </entry>
+        <entry name="floatCalculators" type="Bool">
+            <label>Calculators open floating</label>
+            <default>true</default>
+        </entry>
+        <entry name="floatPasswordTools" type="Bool">
+            <label>Password and key managers open floating</label>
+            <default>true</default>
+        </entry>
+        <entry name="floatArchivesDownloads" type="Bool">
+            <label>Archive and download tools open floating</label>
+            <default>true</default>
+        </entry>
+
+        <entry name="maxTiled" type="Int">
+            <label>Most windows tiled per screen and desktop (more float)</label>
+            <default>5</default>
+            <min>1</min>
+            <max>12</max>
+        </entry>
+
+        <entry name="floatExtra" type="String">
+            <label>Extra window classes that always float</label>
+            <default></default>
+        </entry>
+
+        <entry name="alwaysTile" type="String">
+            <label>Window classes that always tile</label>
+            <default></default>
+        </entry>
+    </group>
+</kcfg>

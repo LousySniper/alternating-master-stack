@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>AlternatingMasterStackConfig</class>
+ <widget class="QWidget" name="AlternatingMasterStackConfig">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>560</width><height>760</height></rect>
+  </property>
+  <layout class="QVBoxLayout" name="mainLayout">
+   <item>
+    <widget class="QGroupBox" name="groupFloat">
+     <property name="title"><string>Open floating instead of tiling</string></property>
+     <layout class="QVBoxLayout" name="floatLayout">
+      <item>
+       <widget class="QCheckBox" name="kcfg_floatFileManagers">
+        <property name="text"><string>File managers</string></property>
+        <property name="toolTip"><string>Dolphin, Nautilus, Thunar, Nemo, PCManFM, Krusader</string></property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="kcfg_floatTerminals">
+        <property name="text"><string>Terminals</string></property>
+        <property name="toolTip"><string>Konsole</string></property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="kcfg_floatSystemTools">
+        <property name="text"><string>Settings and system tools</string></property>
+        <property name="toolTip"><string>System Settings, system monitors, disk and cleanup tools, help centre, info centre</string></property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="kcfg_floatSoftwareCentres">
+        <property name="text"><string>Software centres</string></property>
+        <property name="toolTip"><string>Discover, GNOME Software, Pamac, Synaptic</string></property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="kcfg_floatDevicePanels">
+        <property name="text"><string>Audio, network and device panels</string></property>
+        <property name="toolTip"><string>Pavucontrol, EasyEffects, Bluetooth manager, printer setup, KDE Connect, camera apps</string></property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="kcfg_floatMusicPlayers">
+        <property name="text"><string>Music players</string></property>
+        <property name="toolTip"><string>Elisa, Amarok, Rhythmbox, Strawberry, Spotify, Tidal, podcasts</string></property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="kcfg_floatVideoPlayers">
+        <property name="text"><string>Video players</string></property>
+        <property name="toolTip"><string>VLC, mpv, Haruna, Celluloid, Totem</string></property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="kcfg_floatTextOpeners">
+        <property name="text"><string>Quick text openers (not IDEs)</string></property>
+        <property name="toolTip"><string>Kate, KWrite, Gedit, Mousepad, Geany</string></property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="kcfg_floatPhotoViewers">
+        <property name="text"><string>Photo viewers</string></property>
+        <property name="toolTip"><string>Gwenview, Eye of GNOME, Loupe, Ristretto, Nomacs</string></property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="kcfg_floatQuickTools">
+        <property name="text"><string>Screenshot, picker and clipboard tools</string></property>
+        <property name="toolTip"><string>Spectacle, Flameshot, colour and character pickers, font viewer, CopyQ</string></property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="kcfg_floatCalculators">
+        <property name="text"><string>Calculators</string></property>
+        <property name="toolTip"><string>KCalc, GNOME Calculator, Qalculate</string></property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="kcfg_floatPasswordTools">
+        <property name="text"><string>Password and key managers</string></property>
+        <property name="toolTip"><string>KeePassXC, Bitwarden, KWallet manager, Seahorse, Kleopatra</string></property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="kcfg_floatArchivesDownloads">
+        <property name="text"><string>Archive and download tools</string></property>
+        <property name="toolTip"><string>Ark, File Roller, qBittorrent, KTorrent, Transmission</string></property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="groupLimit">
+     <property name="title"><string>Limit</string></property>
+     <layout class="QFormLayout" name="limitLayout">
+      <item row="0" column="0">
+       <widget class="QLabel" name="labelMax"><property name="text"><string>Most windows tiled:</string></property></widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QSpinBox" name="kcfg_maxTiled">
+        <property name="minimum"><number>1</number></property>
+        <property name="maximum"><number>12</number></property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="groupCustom">
+     <property name="title"><string>Your own apps</string></property>
+     <layout class="QFormLayout" name="customLayout">
+      <item row="0" column="0">
+       <widget class="QLabel" name="labelExtra"><property name="text"><string>Always float:</string></property></widget>
+      </item>
+      <item row="0" column="1"><widget class="QLineEdit" name="kcfg_floatExtra"/></item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="labelNever"><property name="text"><string>Always tile:</string></property></widget>
+      </item>
+      <item row="1" column="1"><widget class="QLineEdit" name="kcfg_alwaysTile"/></item>
+      <item row="2" column="0" colspan="2">
+       <widget class="QLabel" name="labelHint">
+        <property name="text"><string>Window classes, separated by commas. Case is ignored. "Always tile" wins over every category above. Press Meta+Ctrl+F on a window to see its class in the log.</string></property>
+        <property name="wordWrap"><bool>true</bool></property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="labelApply">
+     <property name="text"><string>Changes reach windows you open from now on. Windows that are already open keep their state (Meta+Shift+F toggles one). To apply everything, turn the script off and on again in KWin Scripts.</string></property>
+     <property name="wordWrap"><bool>true</bool></property>
+    </widget>
+   </item>
+   <item>
+    <spacer name="spacer">
+     <property name="orientation"><enum>Qt::Vertical</enum></property>
+    </spacer>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

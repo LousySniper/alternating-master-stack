@@ -1,0 +1,18 @@
+{
+    "KPackageStructure": "KWin/Script",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "Alternating Master Stack contributors"
+            }
+        ],
+        "Description": "Smart alternating tiling: sizes adapt to the open windows, order is never changed automatically",
+        "Id": "alternating-master-stack",
+        "License": "GPL-3.0-or-later",
+        "Name": "Alternating Master Stack",
+        "Version": "1.7"
+    },
+    "X-Plasma-API": "javascript",
+    "X-Plasma-MainScript": "code/main.js",
+    "X-KDE-ConfigModule": "kwin/effects/configs/kcm_kwin4_genericscripted"
+}

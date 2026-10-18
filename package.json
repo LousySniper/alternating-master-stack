@@ -1,0 +1,11 @@
+{
+  "name": "alternating-master-stack",
+  "version": "1.7.0",
+  "description": "Smart alternating tiling script for KDE Plasma 6 (KWin)",
+  "license": "GPL-3.0-or-later",
+  "private": true,
+  "scripts": {
+    "test": "node tests/harness.js"
+  },
+  "engines": { "node": ">=18" }
+}
