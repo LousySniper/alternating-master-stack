@@ -66,7 +66,6 @@ Rebind them under *System Settings → Keyboard → Shortcuts*.
 | Meta+Ctrl+F | always float / tile this app (this session) |
 | Meta+Ctrl+D | print tiling order, sizes and reasons to the log |
 | Meta+Ctrl+Shift+D | debug log on / off |
-| unbound | *Share 30 … Share 80* (exact share of the focused window's split), *Reload Settings* |
 
 
 ## License
