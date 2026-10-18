@@ -3,14 +3,14 @@
     "KPlugin": {
         "Authors": [
             {
-                "Name": "Alternating Master Stack contributors"
+                "Name": "LousySniper"
             }
         ],
         "Description": "Smart alternating tiling: sizes adapt to the open windows, order is never changed automatically",
         "Id": "alternating-master-stack",
         "License": "GPL-3.0-or-later",
         "Name": "Alternating Master Stack",
-        "Version": "1.7"
+        "Version": "1.0"
     },
     "X-Plasma-API": "javascript",
     "X-Plasma-MainScript": "code/main.js",
