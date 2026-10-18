@@ -68,12 +68,6 @@ Rebind them under *System Settings → Keyboard → Shortcuts*.
 | Meta+Ctrl+Shift+D | debug log on / off |
 | unbound | *Share 30 … Share 80* (exact share of the focused window's split), *Reload Settings* |
 
-## Tuning in the file
-
-Gaps, smart-sizing weights, size limits and the lists of floating apps are constants at the top of `script/contents/code/main.js`. Edit, then turn the script off and on.
-
-
-See [CONTRIBUTING.md](CONTRIBUTING.md). Bugs: please include your Plasma version, X11/Wayland, and the output of **Meta+Ctrl+D**.
 
 ## License
 
