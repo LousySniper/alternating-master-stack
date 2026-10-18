@@ -1,5 +1,9 @@
 # Alternating Master Stack
 
+<p align="center">
+  <img src="docs/tiling.svg" alt="Animation: windows tile in an alternating split, a sixth window floats, then a floating window is dropped on a title bar to join the tiling" width="760">
+</p>
+
 A tiling script for **KDE Plasma 6** (KWin). Windows are laid out in an alternating split: the first window takes half of the screen, the next takes half of what is left (stacked), the next half of that (side by side), and so on. Sizes adapt to what is open, and **the order of your windows is never changed automatically**.
 
 > Status: developed against Plasma 6; the optional panel widget has the least testing. The automated tests run against a mock KWin, so real-desktop behaviour (especially Wayland timing) may differ. Please open an issue if something misbehaves.
