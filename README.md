@@ -79,4 +79,3 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). Bugs: please include your Plasma version
 ## License
 
 GPL-3.0-or-later, see [LICENSE](LICENSE).
-# alternating-master-stack
