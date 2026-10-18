@@ -6,7 +6,7 @@
 
 A tiling script for **KDE Plasma 6** (KWin). Windows are laid out in an alternating split: the first window takes half of the screen, the next takes half of what is left (stacked), the next half of that (side by side), and so on. Sizes adapt to what is open, and **the order of your windows is never changed automatically**.
 
-> Status: developed against Plasma 6; the optional panel widget has the least testing. The automated tests run against a mock KWin, so real-desktop behaviour (especially Wayland timing) may differ. Please open an issue if something misbehaves.
+> Status: developed against Plasma 6; the optional panel widget has the least testing. Please open an issue if something misbehaves.
 
 ## Features
 
@@ -72,11 +72,6 @@ Rebind them under *System Settings → Keyboard → Shortcuts*.
 
 Gaps, smart-sizing weights, size limits and the lists of floating apps are constants at the top of `script/contents/code/main.js`. Edit, then turn the script off and on.
 
-## Development
-
-```sh
-npm test      # mock-KWin tests, no KDE needed (Node 18+)
-```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). Bugs: please include your Plasma version, X11/Wayland, and the output of **Meta+Ctrl+D**.
 
