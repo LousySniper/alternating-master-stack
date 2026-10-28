@@ -10,7 +10,7 @@
         "Id": "alternating-master-stack",
         "License": "GPL-3.0-or-later",
         "Name": "Alternating Master Stack",
-        "Version": "1.8"
+        "Version": "1.1"
     },
     "X-Plasma-API": "javascript",
     "X-Plasma-MainScript": "code/main.js",

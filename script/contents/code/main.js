@@ -1,5 +1,5 @@
 /*
- * Alternating Master Stack v1.8 — KDE Plasma 6
+ * Alternating Master Stack v1.1 — KDE Plasma 6
  *
  * Alternating tiling with smart sizing, a tile limit, floating apps and
  * mouse / keyboard control. Window order is never changed automatically.
