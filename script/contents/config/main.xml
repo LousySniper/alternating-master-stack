@@ -5,6 +5,18 @@
     <kcfgfile name=""/>
 
     <group name="">
+        <entry name="floatAll" type="Bool">
+            <label>All windows open floating (only the apps you choose tile)</label>
+            <default>false</default>
+        </entry>
+        <entry name="middleClickToggle" type="Bool">
+            <label>Middle-click (bound to Decrease opacity) tiles / floats the window</label>
+            <default>false</default>
+        </entry>
+        <entry name="minimizeOnTile" type="Bool">
+            <label>Tiling a window minimizes the windows that aren't tiles</label>
+            <default>true</default>
+        </entry>
         <entry name="floatFileManagers" type="Bool">
             <label>File managers open floating</label>
             <default>true</default>
@@ -63,6 +75,25 @@
             <default>5</default>
             <min>1</min>
             <max>12</max>
+        </entry>
+
+        <entry name="gapInner" type="Int">
+            <label>Gap between windows (px)</label>
+            <default>8</default>
+            <min>0</min>
+            <max>64</max>
+        </entry>
+
+        <entry name="gapOuter" type="Int">
+            <label>Gap around the screen edge (px)</label>
+            <default>8</default>
+            <min>0</min>
+            <max>64</max>
+        </entry>
+
+        <entry name="osdMessages" type="Bool">
+            <label>Show a short on-screen message after changes</label>
+            <default>true</default>
         </entry>
 
         <entry name="floatExtra" type="String">

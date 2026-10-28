@@ -24,6 +24,12 @@ if [ "$1" != "--keep-settings" ]; then
   fi
 fi
 
+# Give middle-click back to KWin's defaults if install.sh --middle-click set it.
+for k in CommandActiveTitlebar2 CommandInactiveTitlebar2 CommandAll2; do
+  [ "$(kreadconfig6 --file kwinrc --group MouseBindings --key "$k")" = "Decrease Opacity" ] && \
+    kwriteconfig6 --file kwinrc --group MouseBindings --key "$k" --delete
+done
+
 echo "== removing the panel widget (if installed) =="
 if [ -n "$WIDGET_ID" ]; then
   kpackagetool6 --type=Plasma/Applet --remove "$WIDGET_ID" >/dev/null 2>&1 && echo "removed $WIDGET_ID" || echo "not installed"

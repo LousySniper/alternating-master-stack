@@ -1,7 +1,21 @@
 #!/usr/bin/env bash
 # Installs/upgrades the tiling script (and the optional panel widget) for the
-# current user, then checks the result.   Usage: ./install.sh [--no-widget]
+# current user, then checks the result.
+# Usage: ./install.sh [--no-widget] [--float-all] [--middle-click]
+#   --float-all     all windows open floating; you pick what tiles
+#   --middle-click  middle-click a title bar, or Meta+middle-click anywhere in
+#                   a window, to tile / float it (binds middle-click to KWin's
+#                   "Decrease opacity", which the script turns into the toggle)
 cd "$(dirname "$0")" || exit 1
+WIDGET=1; FLOAT_ALL=0; MIDDLE=0
+for arg in "$@"; do
+  case "$arg" in
+    --no-widget)   WIDGET=0 ;;
+    --float-all)   FLOAT_ALL=1 ;;
+    --middle-click) MIDDLE=1 ;;
+    *) echo "unknown option: $arg"; exit 1 ;;
+  esac
+done
 ID=alternating-master-stack
 DEST="$HOME/.local/share/kwin/scripts/$ID"
 QDBUS=$(command -v qdbus6 || command -v qdbus)
@@ -17,7 +31,7 @@ kwriteconfig6 --file kwinrc --group Plugins --key "${ID}Enabled" true
 
 # Settings keys from old versions that no longer exist; remove them.
 for k in innerGap outerGap defaultLayout masterCount defaultRatio showMessages ignoredClasses \
-         floatOnMinSize floatWhenTooSmall detectMaximized newWindowPlacement; do
+         floatOnMinSize floatWhenTooSmall detectMaximized newWindowPlacement keepBelowToggle; do
   kwriteconfig6 --file kwinrc --group "Script-$ID" --key "$k" --delete
 done
 
@@ -25,9 +39,19 @@ echo; echo "== installed script files =="
 find "$DEST" -type f | sort
 [ -f "$DEST/contents/code/main.js" ] || echo "MISSING: main.js"
 [ -f "$DEST/contents/ui/config.ui" ] || echo "MISSING: settings page (config.ui)"
+[ "$FLOAT_ALL" = 1 ] && kwriteconfig6 --file kwinrc --group "Script-$ID" --key floatAll true
+
+if [ "$MIDDLE" = 1 ]; then
+  kwriteconfig6 --file kwinrc --group "Script-$ID" --key middleClickToggle true
+  for k in CommandActiveTitlebar2 CommandInactiveTitlebar2 CommandAll2; do
+    kwriteconfig6 --file kwinrc --group MouseBindings --key "$k" "Decrease Opacity"
+  done
+  echo "Middle-click on a title bar, or Meta+middle-click in a window = tile toggle"
+fi
+
 echo; echo "Settings: System Settings > Window Management > KWin Scripts > Alternating Master Stack > configure icon."
 
-if [ "$1" != "--no-widget" ]; then
+if [ "$WIDGET" = 1 ]; then
   echo; echo "== panel widget (Tiling Controls) =="
   { kpackagetool6 --type=Plasma/Applet --upgrade widget 2>/dev/null \
       || kpackagetool6 --type=Plasma/Applet --install widget; } && \
@@ -36,5 +60,4 @@ if [ "$1" != "--no-widget" ]; then
 fi
 
 "$QDBUS" org.kde.KWin /KWin reconfigure
-echo; echo "Done. Press Meta+Ctrl+D to print the tiling order, sizes and weights to the log:"
-echo "  journalctl -f QT_CATEGORY=js QT_CATEGORY=kwin_scripting"
+echo; echo "Done."

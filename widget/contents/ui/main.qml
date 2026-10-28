@@ -2,8 +2,9 @@
  * Tiling Controls: a small panel for the "Alternating Master Stack" KWin
  * script (alternating tiling with smart sizing). Every button triggers one of the script's shortcuts through
  * KGlobalAccel, exactly as if you had pressed the key. Actions apply to the
- * tiled window you were last using (the script remembers it, so clicking
- * here doesn't change the target).
+ * window you were last using (the script remembers it, so clicking
+ * here doesn't change the target). Middle-click the panel icon to float / tile
+ * that window without opening the popup.
  */
 import QtQuick
 import QtQuick.Layouts
@@ -20,7 +21,7 @@ PlasmoidItem {
 
     Plasmoid.icon: "view-grid"
     toolTipMainText: "Tiling controls"
-    toolTipSubText: "Window sizes and order"
+    toolTipSubText: "Middle-click: float / tile the last used window"
 
     P5Support.DataSource {
         id: runner
@@ -49,11 +50,36 @@ PlasmoidItem {
         Layout.fillWidth: true
     }
 
+    compactRepresentation: Kirigami.Icon {
+        source: Plasmoid.icon
+        active: compactMouse.containsMouse
+
+        MouseArea {
+            id: compactMouse
+            anchors.fill: parent
+            hoverEnabled: true
+            acceptedButtons: Qt.LeftButton | Qt.MiddleButton
+            onClicked: function (mouse) {
+                if (mouse.button === Qt.MiddleButton)
+                    root.trigger("Toggle Floating")
+                else
+                    root.expanded = !root.expanded
+            }
+        }
+    }
+
     fullRepresentation: ColumnLayout {
         id: panel
         spacing: Kirigami.Units.smallSpacing
         Layout.minimumWidth: Kirigami.Units.gridUnit * 21
         Layout.preferredWidth: Kirigami.Units.gridUnit * 21
+
+        QQC2.Button {
+            Layout.fillWidth: true
+            icon.name: "window-duplicate"
+            text: "Float / tile this window"
+            onClicked: root.trigger("Toggle Floating")
+        }
 
         Heading { text: "Sizing" }
         RowLayout {
@@ -113,12 +139,8 @@ PlasmoidItem {
         Heading { text: "Window" }
         RowLayout {
             Layout.fillWidth: true
-            Action { text: "Float / tile"; onClicked: root.trigger("Toggle Floating") }
             Action { text: "Make master"; onClicked: root.trigger("Promote to Master") }
-        }
-        Action {
-            text: "Always float / tile this app"
-            onClicked: root.trigger("Toggle Float for This App")
+            Action { text: "Always float / tile this app"; onClicked: root.trigger("Toggle Float for This App") }
         }
         RowLayout {
             Layout.fillWidth: true

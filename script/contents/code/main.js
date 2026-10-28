@@ -1,73 +1,18 @@
 /*
- * Alternating Master Stack v1.7 — KDE Plasma 6
+ * Alternating Master Stack v1.8 — KDE Plasma 6
  *
- * Alternating tiling: window k takes the first part of a split of the
- * remaining space; the split direction alternates (side by side, then
- * stacked, ...). Window order is NEVER changed automatically.
- *
- * Smart sizing: split sizes are chosen from what is open, so the layout
- * adapts to the windows instead of always cutting 50/50:
- *   - kind of app (browser/editor get more room, terminals/chat/music less)
- *   - the size a window asked for when it opened
- *   - declared minimum sizes (honoured as far as possible, never floated)
- *   - how many windows there are (the master keeps a bit of extra room)
- *   - screen shape (portrait screens start with a stacked split; very wide
- *     regions are split side by side)
- * Sizes you set yourself (keys, mouse, "Share") always win; "Reset Ratios"
- * hands control back to smart sizing.
- *
- * Limit: at most MAX_TILED windows are tiled per screen and desktop. Windows
- * beyond that float (centred, cascaded). Drag a floating window onto a tile's
- * title bar: with room it joins the tiling (no keyboard shortcut needed);
- * when full it takes the tile and the replaced window floats where the dragged
- * one came from. When a tile frees up, the next floating window tiles.
- *
- * Quick-use apps (anything that is not a constant part of a workspace: file
- * managers, terminals, settings and system tools, music and video players,
- * text openers, photo viewers, screenshots, calculators, password managers,
- * archive tools, downloads: see FLOAT_GROUPS; each category can be
- * switched off in the settings page)
- * open floating and don't count toward the limit, which leaves the tiles for
- * the windows you keep. Meta+Shift+F tiles one; Meta+Ctrl+F changes a whole
- * app for this session so you can experiment.
- *
- * Order rules: new windows go to the END. A window restored from minimized,
- * or moved to another desktop/screen, also goes to the end. Maximize and
- * fullscreen keep a window's place.
- *
- * Shortcuts (rebind in System Settings > Keyboard > Shortcuts)
- *  Meta+H/J/K/L              focus left/down/up/right
- *  Meta+Shift+H/J/K/L        swap with neighbour
- *  Meta+Alt+J / Meta+Alt+K   focus next / previous window in tile order
- *  Meta+Return               promote to master (swap with master if already)
- *  Meta+Ctrl+L / H           window wider / narrower (5% steps)
- *  Meta+Ctrl+K / J           window taller / shorter (5% steps)
- *  Meta+Ctrl+0               reset sizes (smart sizing decides again)
- *  Meta+Ctrl+S               smart sizing on / off
- *  Meta+Ctrl+R / Meta+Ctrl+Shift+R   rotate windows forward / backward
- *  Meta+Ctrl+M               mirror left-right
- *  Meta+Ctrl+G               gaps on / off
- *  Meta+Shift+F              float (centred, raised) / unfloat; on a window that
- *                            floats only because of the limit: take the last tile
- *  Meta+Ctrl+F               always float / tile this app (this session)
- *  Meta+Ctrl+Shift+D         debug log on / off (what the script moves and why)
- *  Meta+Ctrl+D               print tiling order, sizes and why-not to the log
- *  (unbound, assignable) Share 30 ... Share 80: give the focused window
- *  30-80% of its split
- *
- * Settings: System Settings > Window Management > KWin Scripts > configure
- * (which categories float, the tile limit, your own always-float / always-tile
- * classes). Gaps and sizing constants are below; edit them, then turn the script
- * off and on. "Reload Settings" (unbound) re-reads the settings page.
+ * Alternating tiling with smart sizing, a tile limit, floating apps and
+ * mouse / keyboard control. Window order is never changed automatically.
+ * Features, shortcuts and settings: see README.md.
  */
 
 // --------------------------------------------------
 // Settings (edit here)
 // --------------------------------------------------
 
-const INNER_GAP = 8;             // px between windows
-const OUTER_GAP = 8;             // px around the screen edge
-const SHOW_MESSAGES = true;      // short on-screen message after changes
+const INNER_GAP = 8;             // px between windows (default; the settings page can change it)
+const OUTER_GAP = 8;             // px around the screen edge (default; ditto)
+const SHOW_MESSAGES = true;      // short on-screen message after changes (default; ditto)
 const SMART_SIZING = true;       // start with smart sizing on
 
 // Windows of these classes are never tiled (case-insensitive).
@@ -81,10 +26,7 @@ const IGNORED_CLASSES = [
 // KWin's own windows (tooltips on the title-bar buttons and the like).
 const KWIN_CLASSES = ["kwin", "kwin_wayland", "kwin_x11", "org.kde.kwin"];
 
-/*
- * How much room a kind of window likes, relative to 1.0. A window matches
- * when its class or name CONTAINS one of the words. First match wins.
- */
+/* How much room a kind of window likes (1.0 = normal); first word contained in the class or name wins. */
 const CATEGORY_WEIGHTS = [
     { weight: 1.5, match: ["code", "vscodium", "jetbrains", "idea", "pycharm", "clion", "webstorm",
                            "goland", "rider", "android-studio", "kate", "kwrite", "sublime", "emacs",
@@ -105,12 +47,7 @@ let MAX_TILED = 5;               // windows beyond this many per screen/desktop 
 const BASE_MAX_TILED = MAX_TILED;
 const OVERFLOW_CASCADE = 32;     // px offset between stacked floating windows
 
-/*
- * Apps that open floating (exact class or name, case-insensitive), by
- * category. Every category can be switched off in the script's settings page;
- * floating apps don't count toward MAX_TILED. Experiment with Meta+Ctrl+F and
- * add the class names it prints to FLOAT_CLASSES (or to the settings page).
- */
+/* Apps that open floating, by category (exact class or name, case-insensitive). */
 const FLOAT_GROUPS = {
     // ---- file managers
     fileManagers: [
@@ -210,8 +147,6 @@ const FLOAT_GROUPS = {
 
 const FLOAT_CLASSES = [];        // your own extra classes that always float
 
-const DEBUG_LOG = false;         // start with the debug log on (Meta+Ctrl+Shift+D toggles)
-
 const MASTER_BONUS = 1.6;        // extra weight of the master when 3+ windows are open
 const AUTO_MIN = 0.25;           // smart sizing never gives a split less than this ...
 const AUTO_MAX = 0.75;           // ... or more than this
@@ -238,14 +173,28 @@ let dirty = false;
 let gapsOn = true;
 let smartOn = SMART_SIZING;
 let lastFocused = null;      // last tileable window that had focus
-let debugOn = DEBUG_LOG;
 let ready = false;           // false while the script is starting up
+let innerGap = INNER_GAP;    // from the settings page
+let outerGap = OUTER_GAP;
+let showMessages = SHOW_MESSAGES;
+let floatAll = false;        // every window opens floating unless its app is set to tile
+let middleToggle = false;    // middle-click (bound to "Decrease opacity") = tile toggle
+let syncingOpacity = false;  // true while we undo that opacity step
+let minimizeOnTile = true;   // tiling a window by hand minimizes the untiled ones
 
 const floatClassSet = new Set();   // filled by applySettings()
+const tileClassSet = new Set();    // "Always tile" from the settings page
+const savedTile = new Set();       // apps you tiled with the button, window menu or Meta+Ctrl+F (kept across restarts)
+const savedFloat = new Set();      // apps you floated the same way
 const observedMin = new Map(); // window -> size it showed it cannot shrink below
 const fixTries = new Map();   // window -> { sig, n }: re-apply attempts for one assigned rect
 const overlaySet = new Set();  // tiny windows at first sight: tooltips and the like
 const overflowSet = new Set(); // windows floating only because of MAX_TILED
+const maximizedSet = new Set(); // maximized windows, floating ones included
+const pendingFloat = new Set(); // left fullscreen / maximized: centred once KWin has restored it
+const timers = new Set();       // running timers, kept so they aren't garbage collected
+const soloMax = new Set();      // lone tiles, maximized through KWin rather than sized by us
+let soloChanging = false;       // true while we maximize / restore one of them
 
 const manual = {};           // layoutKey -> { splitIndex: ratio } set by the user
 const splitInfo = {};        // layoutKey -> splits from the last layout pass
@@ -270,24 +219,6 @@ function removeFromList(list, win) {
 
 function clamp(v, lo, hi) {
     return Math.max(lo, Math.min(hi, v));
-}
-
-/* Everything that tells a real window from a tooltip, for the debug log. */
-function describeFlags(win) {
-    const flags = ["normalWindow", "tooltip", "popupWindow", "popupMenu", "dropdownMenu", "comboBox",
-                   "appletPopup", "notification", "onScreenDisplay", "outline", "splash", "toolbar",
-                   "menu", "dock", "dialog", "transient", "skipTaskbar", "skipSwitcher", "wantsInput",
-                   "resizeable", "specialWindow", "inputMethod"];
-
-    return "class=" + win.resourceClass + " name=" + win.resourceName
-        + " desktopFile=" + win.desktopFileName + " pid=" + win.pid
-        + " windowType=" + win.windowType + " "
-        + flags.map(function (f) { return f + "=" + win[f]; }).join(" ");
-}
-
-function dbg(message) {
-    if (debugOn)
-        print("Alternating Tile [debug]: " + message);
 }
 
 // --------------------------------------------------
@@ -325,16 +256,18 @@ function readBool(key, fallback) {
     return !(v === false || v === "false" || v === 0 || v === "0");
 }
 
+/* A whole number of pixels, 0..64; anything else falls back to the default. */
+function readInt(key, fallback) {
+    const v = parseInt(readSetting(key, fallback), 10);
+
+    return isFinite(v) ? clamp(v, 0, 64) : fallback;
+}
+
 function readList(key) {
     return String(readSetting(key, "")).toLowerCase().split(/[\s,;]+/).filter(function (x) { return x !== ""; });
 }
 
-/*
- * Reads the settings page and rebuilds what floats. Returns true when
- * something changed. Called at start, whenever a window appears (so a saved
- * change reaches the next window without restarting) and by "Reload Settings".
- * A change discards the session's Meta+Ctrl+F experiments.
- */
+/* Reads the settings page. True when something changed. */
 function applySettings() {
     const groups = {};
     const set = new Set();
@@ -353,11 +286,16 @@ function applySettings() {
     const extra = readList("floatExtra");
     const never = readList("alwaysTile");
     const maxTiled = clamp(parseInt(readSetting("maxTiled", BASE_MAX_TILED), 10) || BASE_MAX_TILED, 1, 12);
+    const gaps = [readInt("gapInner", INNER_GAP), readInt("gapOuter", OUTER_GAP)];
+    const messages = readBool("osdMessages", SHOW_MESSAGES);
+    const all = readBool("floatAll", false);
+    const middle = readBool("middleClickToggle", false);
+    const minimize = readBool("minimizeOnTile", true);
 
     extra.forEach(function (c) { set.add(c); });
     never.forEach(function (c) { set.delete(c); });
 
-    const sig = JSON.stringify([groups, extra, never, maxTiled]);
+    const sig = JSON.stringify([groups, extra, never, maxTiled, gaps, messages, all, middle, minimize]);
 
     if (sig === settingsSig)
         return false;
@@ -365,11 +303,15 @@ function applySettings() {
     settingsSig = sig;
     floatClassSet.clear();
     set.forEach(function (c) { floatClassSet.add(c); });
+    tileClassSet.clear();
+    never.forEach(function (c) { tileClassSet.add(c); });
     MAX_TILED = maxTiled;
-    print("Alternating Tile: settings applied: max " + MAX_TILED + " tiled, floating categories: "
-          + Object.keys(groups).filter(function (k) { return groups[k]; }).join(",")
-          + (extra.length ? ", extra float: " + extra.join(",") : "")
-          + (never.length ? ", always tile: " + never.join(",") : ""));
+    floatAll = all;
+    middleToggle = middle;
+    minimizeOnTile = minimize;
+    innerGap = gaps[0];
+    outerGap = gaps[1];
+    showMessages = messages;
     return true;
 }
 
@@ -377,11 +319,60 @@ function appKey(win) {
     return String(win.resourceClass || win.resourceName || "").toLowerCase();
 }
 
-function matchesFloatClass(win) {
+function matchesSet(set, win) {
     const cls = String(win.resourceClass || "").toLowerCase();
     const name = String(win.resourceName || "").toLowerCase();
 
-    return floatClassSet.has(cls) || (name !== "" && floatClassSet.has(name));
+    return set.has(cls) || (name !== "" && set.has(name));
+}
+
+function matchesFloatClass(win) {
+    return matchesSet(floatClassSet, win);
+}
+
+/* Why a new window opens floating ("" = it tiles). */
+function floatReason(win) {
+    const key = appKey(win);
+
+    if (savedTile.has(key))         return "";
+    if (savedFloat.has(key))        return "saved";
+    if (matchesSet(tileClassSet, win)) return "";
+    if (matchesFloatClass(win))     return "class";
+    if (floatAll)                   return "all";
+
+    return "";
+}
+
+// --------------------------------------------------
+// Saved per-app choices (written to kwinrc through Plasma's scripting API)
+// --------------------------------------------------
+
+const SAVE_GROUP = "Script-alternating-master-stack";
+
+function loadSavedApps() {
+    readList("tiledApps").forEach(function (c) { savedTile.add(c); });
+    readList("floatedApps").forEach(function (c) { if (!savedTile.has(c)) savedFloat.add(c); });
+}
+
+/* Only plain class names are saved: they end up inside a script string. */
+function plainClass(c) {
+    return /^[a-z0-9._-]+$/.test(c);
+}
+
+function saveApps() {
+    function list(set) {
+        return Array.from(set).filter(plainClass).sort().join(",");
+    }
+
+    const js = "var c = ConfigFile('kwinrc', '" + SAVE_GROUP + "');"
+        + "c.writeEntry('tiledApps', '" + list(savedTile) + "');"
+        + "c.writeEntry('floatedApps', '" + list(savedFloat) + "');";
+
+    try {
+        callDBus("org.kde.plasmashell", "/PlasmaShell", "org.kde.PlasmaShell", "evaluateScript", js);
+    } catch (error) {
+        print("Alternating Tile: could not save the app choice: " + error);
+    }
 }
 
 function isKWinWindow(win) {
@@ -405,10 +396,7 @@ function whyNot(win) {
     if (win.deleted)              return "deleted";
     if (!win.normalWindow)        return "not a normal window";
 
-    // KWin's own tooltips (the label shown when you hover the close/minimize/
-    // maximize buttons), popups and overlays can report themselves as normal
-    // windows. Only KWin's definitive window-TYPE flags are used here: flags
-    // like wantsInput or skipTaskbar are not reliable on real windows.
+    // KWin's tooltips and popups can claim to be normal windows: trust only type flags.
     if (win.tooltip || win.popupWindow || win.popupMenu || win.dropdownMenu
         || win.comboBox || win.appletPopup || win.notification
         || win.criticalNotification || win.onScreenDisplay || win.dndIcon
@@ -452,16 +440,26 @@ function onCurrentDesktop(win) {
     });
 }
 
-function layoutKey(screen) {
-    const d = workspace.currentDesktop;
-    return String(screen.name) + ":" + String(d && d.id !== undefined ? d.id : d);
+/* On the current activity (no list = all activities). */
+function onCurrentActivity(win) {
+    const current = workspace.currentActivity;
+    const list = win.activities;
+
+    if (!current || !list || list.length === 0)
+        return true;
+
+    return contains(list, current);
 }
 
-/*
- * The window actions apply to. When something that isn't a tiling candidate
- * has focus (a panel popup, the controls widget, KRunner), fall back to the
- * last tileable window that had it.
- */
+function layoutKey(screen) {
+    const d = workspace.currentDesktop;
+    const a = workspace.currentActivity;
+
+    return String(screen.name) + ":" + String(d && d.id !== undefined ? d.id : d)
+        + (a ? ":" + a : "");
+}
+
+/* The window actions apply to: the focused one, or the last tileable one that had focus. */
 function focusedWindow() {
     const a = workspace.activeWindow;
 
@@ -482,6 +480,7 @@ function candidatesOn(screen) {
     return windows.filter(function (win) {
         return isTileable(win)
             && onCurrentDesktop(win)
+            && onCurrentActivity(win)
             && win.output === screen;
     });
 }
@@ -492,16 +491,16 @@ function tiledOn(screen) {
 }
 
 function gapIn() {
-    return gapsOn ? INNER_GAP : 0;
+    return gapsOn ? innerGap : 0;
 }
 
 function gapOut() {
-    return gapsOn ? OUTER_GAP : 0;
+    return gapsOn ? outerGap : 0;
 }
 
 /* Short on-screen message (Plasma's OSD). Silently skipped if unavailable. */
 function osd(text) {
-    if (!SHOW_MESSAGES)
+    if (!showMessages)
         return;
 
     try {
@@ -569,10 +568,7 @@ function categoryWeight(win) {
     return 1;
 }
 
-/*
- * A window that opened big wants room; one that opened small doesn't.
- * Only known for windows that appeared after the script started.
- */
+/* A window that opened big wants more room. */
 function sizeFactor(win) {
     const share = openShare.get(win);
 
@@ -602,10 +598,7 @@ function rememberOpenSize(win) {
     }
 }
 
-/*
- * Minimum along an axis: what the window declares, or what it showed it
- * cannot shrink below. Capped so a silly value can't dominate.
- */
+/* Minimum along an axis: declared or observed, capped. */
 function minAlong(win, axis, extent) {
     const m = win.minSize;
     const o = observedMin.get(win);
@@ -618,8 +611,7 @@ function minAlong(win, axis, extent) {
     if (o)
         seen = axis === "V" ? o.width : o.height;
 
-    // A declared minimum may be silly (capped at 60%); a size the window
-    // actually showed it needs is real (capped at 85%).
+    // Declared minimums are capped at 60%, observed ones at 85%.
     return Math.max(Math.min(Math.max(declared, 0), extent * 0.6),
                     Math.min(Math.max(seen, 0), extent * 0.85));
 }
@@ -634,10 +626,7 @@ function maxMinAlong(list, from, axis, extent) {
     return best;
 }
 
-/*
- * Moves ratio r so both sides of split k have room for their minimum
- * sizes where possible. Used for smart, manual and default sizes alike.
- */
+/* Moves ratio r so both sides of split k fit their minimum sizes where possible. */
 function fitMinimums(r, list, k, axis, extent, avail) {
     const needFirst = minAlong(list[k], axis, extent);
     const needRest = maxMinAlong(list, k + 1, axis, extent);
@@ -651,20 +640,14 @@ function fitMinimums(r, list, k, axis, extent, avail) {
     return (lo > hi) ? needFirst / (needFirst + needRest) : clamp(r, lo, hi);
 }
 
-/*
- * Share of split k for the first window, from the weights of the windows
- * on each side. Because each "first" window spans the whole other
- * dimension of its region, this gives every window area ~ its weight.
- */
-function smartRatio(list, weights, k, axis, extent, avail) {
+/* Share of split k for its first window, from the weights on each side. */
+function smartRatio(weights, k) {
     let rest = 0;
 
-    for (let j = k + 1; j < list.length; ++j)
+    for (let j = k + 1; j < weights.length; ++j)
         rest += weights[j];
 
-    let r = clamp(weights[k] / (weights[k] + rest), AUTO_MIN, AUTO_MAX);
-
-    return r;
+    return clamp(weights[k] / (weights[k] + rest), AUTO_MIN, AUTO_MAX);
 }
 
 // --------------------------------------------------
@@ -687,15 +670,10 @@ function setGeometry(win, rect) {
         && g.width === r.width && g.height === r.height)
         return;
 
-    dbg("move \"" + win.caption + "\" -> " + r.x + "," + r.y + " " + r.width + "x" + r.height);
     win.frameGeometry = r;
 }
 
-/*
- * Axis for the next split. Normally the opposite of the previous one; but
- * if the region is much longer than wide (or wider than long) the other
- * axis gives better-shaped windows, so use that.
- */
+/* Axis for the next split: alternates, unless the region's shape says otherwise. */
 function chooseAxis(previous, region) {
     const strict = (previous === "V") ? "H" : "V";
 
@@ -708,11 +686,7 @@ function chooseAxis(previous, region) {
     return strict;
 }
 
-/*
- * Window list[k] takes the "first" part of split k; the remaining windows
- * share the "second" part, which is split again. Returns the rects and the
- * split description (axis, size, ratio) used by the size shortcuts.
- */
+/* Window k takes the first part of split k; the rest share the second part. */
 function layoutAlternating(list, rect, key) {
     const gap = gapIn();
     const n = list.length;
@@ -736,7 +710,7 @@ function layoutAlternating(list, rect, key) {
         if (user !== undefined)
             ratio = user;
         else if (smartOn)
-            ratio = smartRatio(list, weights, k, axis, extent, avail);
+            ratio = smartRatio(weights, k);
         else
             ratio = DEFAULT_RATIO;
 
@@ -806,8 +780,7 @@ function arrangePass() {
         const extra = all.slice(MAX_TILED);
         const key = layoutKey(screen);
 
-        // Windows beyond the limit float; windows that made it into the
-        // limit are tiled again.
+        // Windows beyond the limit float.
         list.forEach(function (win) { overflowSet.delete(win); });
 
         extra.forEach(function (win, i) {
@@ -832,6 +805,14 @@ function arrangePass() {
             workspace.currentDesktop
         );
 
+        if (list.length === 1 && canSoloMax(list[0])) {
+            soloMaximize(list[0], area);
+            delete splitInfo[key];
+            continue;
+        }
+
+        list.forEach(soloRestore);
+
         const outer = list.length > 1 ? gapOut() : 0;
 
         const layout = computeLayout(list, {
@@ -854,6 +835,41 @@ function arrangePass() {
     }
 }
 
+/* A lone tile is maximized through KWin, so floating it is KWin's own restore. */
+function canSoloMax(win) {
+    return typeof win.setMaximize === "function" && win.maximizable !== false;
+}
+
+function soloMaximize(win, area) {
+    placed.set(win, { x: area.x, y: area.y, width: area.width, height: area.height });
+
+    if (soloMax.has(win))
+        return;
+
+    soloMax.add(win);
+    soloChanging = true;
+
+    try {
+        win.setMaximize(true, true);
+    } finally {
+        soloChanging = false;
+    }
+}
+
+/* No longer a lone tile: back to a normal window, so we can size it. */
+function soloRestore(win) {
+    if (!soloMax.delete(win) || win.deleted)
+        return;
+
+    soloChanging = true;
+
+    try {
+        win.setMaximize(false, false);
+    } finally {
+        soloChanging = false;
+    }
+}
+
 function arrange() {
     // Reflow is deferred while the user drags; finishing the drag calls us.
     if (movingWindow)
@@ -865,7 +881,6 @@ function arrange() {
     }
 
     arranging = true;
-    dbg("arrange");
 
     try {
         let passes = 0;
@@ -896,11 +911,7 @@ function raiseAndFocus(win) {
     workspace.activeWindow = win;
 }
 
-/*
- * Centre a window on its screen's work area (plus an optional offset, for
- * cascading). Keeps its size, unless it is nearly screen-sized, in which
- * case it is shrunk so it reads as floating.
- */
+/* Centre a window on its screen; a nearly screen-sized one is shrunk. */
 function centerOnScreen(win, offset) {
     const area = workspace.clientArea(
         KWin.MaximizeArea, win.output, workspace.currentDesktop);
@@ -915,7 +926,6 @@ function centerOnScreen(win, offset) {
     const h = fit(g.height, area.height);
 
     placed.delete(win);
-    dbg("float-place \"" + win.caption + "\"");
 
     win.frameGeometry = {
         x: Math.round(clamp(area.x + (area.width - w) / 2 + shift, area.x, area.x + area.width - w)),
@@ -944,21 +954,112 @@ function sendFloatTo(win, rect) {
     raiseOnly(win);
 }
 
+/* Minimize the windows on that screen that aren't tiles (only those with a task bar entry). */
+function minimizeUntiled(screen) {
+    if (!minimizeOnTile)
+        return;
+
+    const tiles = tiledOn(screen);
+
+    for (const w of workspace.stackingOrder.slice()) {
+        if (!w || w.deleted || w.minimized || w.skipTaskbar || !isCandidate(w) || contains(tiles, w))
+            continue;
+
+        if (w.output === screen && onCurrentDesktop(w) && onCurrentActivity(w))
+            w.minimized = true;
+    }
+}
+
 function isFloatingNow(win) {
     return contains(floatingWindows, win) || overflowSet.has(win);
 }
 
-/*
- * Float: leave the layout, move to the centre of the screen, raise.
- * Unfloat: rejoin the layout (at the end; it floats again if there is no
- * room). A window that floats only because of the limit swaps with the last
- * tile instead.
- */
+/* Float / unfloat the focused window. */
 function toggleFloating() {
     const win = focusedWindow();
 
-    if (!win || contains(suspendedWindows, win))
+    if (win)
+        toggleWindowFloating(win);
+}
+
+/* Leave fullscreen / maximized before the window is moved. */
+function leaveFullState(win) {
+    if (win.fullScreen)
+        win.fullScreen = false;
+
+    if (contains(suspendedWindows, win) || maximizedSet.has(win)) {
+        removeFromList(suspendedWindows, win);
+        removeFromList(pendingRestore, win);
+
+        if (typeof win.setMaximize === "function")
+            win.setMaximize(false, false);
+
+        maximizedSet.delete(win);
+    }
+}
+
+/* After KWin restored it: centre it only if it came back screen-sized. */
+function finishFloat(win) {
+    if (!pendingFloat.delete(win) || win.deleted || !contains(floatingWindows, win))
         return;
+
+    const area = workspace.clientArea(
+        KWin.MaximizeArea, win.output, workspace.currentDesktop);
+    const g = win.frameGeometry;
+
+    if (g.width > area.width * 0.9 && g.height > area.height * 0.9)
+        centerOnScreen(win);
+}
+
+/* Run fn after ms milliseconds. False (and fn not run) where KWin offers no timers. */
+function afterDelay(ms, fn) {
+    if (typeof QTimer === "undefined")
+        return false;
+
+    const t = new QTimer();
+    timers.add(t);
+    t.singleShot = true;
+    t.interval = ms;
+    t.timeout.connect(safe("timer", function () {
+        timers.delete(t);
+        fn();
+    }));
+    t.start();
+    return true;
+}
+
+/* Float / tile one window (not the rest of its app). Not saved. */
+function toggleWindowFloating(win) {
+    if (soloMax.has(win) && !win.fullScreen) {
+        // A lone tile: KWin restores it to where it was before it tiled.
+        removeFromList(windows, win);
+        floatingWindows.push(win);
+        placed.delete(win);
+        pendingFloat.add(win);
+        soloRestore(win);
+        arrange();
+        raiseAndFocus(win);
+        osd("Floating");
+        afterDelay(300, function () { finishFloat(win); });
+        return;
+    }
+
+    if (win.fullScreen || contains(suspendedWindows, win) || maximizedSet.has(win)) {
+        // Always floats. Listed before leaving the state, so the restore handlers skip it.
+        removeFromList(windows, win);
+
+        if (!contains(floatingWindows, win))
+            floatingWindows.push(win);
+
+        // KWin puts it back where it was; moving it too would smear geometry animations.
+        pendingFloat.add(win);
+        leaveFullState(win);
+        arrange();
+        raiseAndFocus(win);
+        osd("Floating");
+        afterDelay(300, function () { finishFloat(win); });   // in case it never moves
+        return;
+    }
 
     if (contains(floatingWindows, win)) {
         removeFromList(floatingWindows, win);
@@ -967,6 +1068,10 @@ function toggleFloating() {
             windows.push(win);
 
         arrange();
+
+        if (!overflowSet.has(win))
+            minimizeUntiled(win.output);
+
         osd(overflowSet.has(win)
             ? "No room to tile (max " + MAX_TILED + "): stays floating"
             : "Tiled");
@@ -979,6 +1084,7 @@ function toggleFloating() {
 
         swapWindows(win, last);
         arrange();
+        minimizeUntiled(win.output);
         raiseAndFocus(win);
         osd("\"" + last.caption + "\" floats instead");
     } else {
@@ -992,17 +1098,8 @@ function toggleFloating() {
     }
 }
 
-/*
- * Make every window of the focused window's app always open floating (or
- * tile again), for this session. For experimenting; to keep the change, add
- * the class name that is printed to FLOAT_CLASSES at the top of the script.
- */
-function toggleAppFloat() {
-    const win = focusedWindow();
-
-    if (!win)
-        return;
-
+/* Tile (or float) every window of an app; the choice is saved. */
+function setAppTiled(win, tile) {
     const key = appKey(win);
 
     if (key === "")
@@ -1012,15 +1109,13 @@ function toggleAppFloat() {
         return w && isCandidate(w) && appKey(w) === key;
     });
 
-    if (floatClassSet.has(key) || matchesFloatClass(win)) {
-        // Remove every spelling that made this app float (class and name).
-        for (const w of same) {
-            floatClassSet.delete(appKey(w));
-            floatClassSet.delete(String(w.resourceName || "").toLowerCase());
-        }
+    savedTile.delete(key);
+    savedFloat.delete(key);
+    (tile ? savedTile : savedFloat).add(key);
 
-        floatClassSet.delete(key);
+    saveApps();
 
+    if (tile) {
         for (const w of same) {
             if (contains(floatingWindows, w)) {
                 removeFromList(floatingWindows, w);
@@ -1031,30 +1126,65 @@ function toggleAppFloat() {
         }
 
         arrange();
-        print("Alternating Tile: \"" + key + "\" tiles again (to keep this, add it to \"Always tile\" in the settings page)");
+        minimizeUntiled(win.output);
         osd("\"" + key + "\" tiles again");
     } else {
-        floatClassSet.add(key);
+        const floated = [];
 
         for (const w of same) {
             if (!contains(floatingWindows, w) && !contains(suspendedWindows, w)) {
                 removeFromList(windows, w);
                 floatingWindows.push(w);
+                floated.push(w);
             }
         }
 
         arrange();
-
-        for (const w of same) {
-            if (contains(floatingWindows, w))
-                centerOnScreen(w);
-        }
-
+        floated.forEach(function (w) { centerOnScreen(w); });
         raiseAndFocus(win);
-        print("Alternating Tile: \"" + key + "\" now always floats. To keep this, add \""
-              + key + "\" to \"Always float\" in the settings page");
         osd("\"" + key + "\" now always floats");
     }
+}
+
+function toggleAppFloat() {
+    const win = focusedWindow();
+
+    if (win)
+        setAppTiled(win, floatReason(win) !== "");     // flip the app's rule
+}
+
+// --------------------------------------------------
+// Middle-click as the tile toggle
+// --------------------------------------------------
+
+/* Middle-click is bound to KWin's "Decrease opacity" (-0.1); that step is undone here and toggles the window. */
+function onOpacityChanged(win, old) {
+    if (syncingOpacity || !middleToggle || win.deleted || !isCandidate(win) || typeof old !== "number")
+        return;
+
+    if (Math.abs(old - win.opacity - 0.1) > 0.01)
+        return;
+
+    const g = win.frameGeometry;
+    const c = workspace.cursorPos;
+
+    if (!c || c.x < g.x || c.x >= g.x + g.width || c.y < g.y || c.y >= g.y + g.height)
+        return;
+
+    syncingOpacity = true;
+
+    try {
+        win.opacity = old;
+    } finally {
+        syncingOpacity = false;
+    }
+
+    // After the click: resizing under a held button leaves the old frame on screen.
+    if (!afterDelay(250, function () {
+        if (!win.deleted)
+            toggleWindowFloating(win);
+    }))
+        toggleWindowFloating(win);
 }
 
 // --------------------------------------------------
@@ -1217,14 +1347,12 @@ function rotateWindows(direction) {
 
 function toggleGaps() {
     gapsOn = !gapsOn;
-    print("Alternating Tile: gaps " + (gapsOn ? "on" : "off"));
     arrange();
     osd(gapsOn ? "Gaps on" : "Gaps off");
 }
 
 function toggleSmart() {
     smartOn = !smartOn;
-    print("Alternating Tile: smart sizing " + (smartOn ? "on" : "off"));
     arrange();
     osd(smartOn ? "Smart sizing on" : "Smart sizing off");
 }
@@ -1233,12 +1361,7 @@ function toggleSmart() {
 // Sizes by hand
 // --------------------------------------------------
 
-/*
- * Window i is the "first" part of split i (if it exists) and lies on the
- * "second" side of every earlier split. To grow it along an axis, move the
- * nearest split on that axis: its own (first part gets more) or the closest
- * earlier one (first part gets less).
- */
+/* Grow / shrink the focused window by moving the nearest split on that axis. */
 function adjustRatio(axis, delta) {
     const win = activeTiled();
 
@@ -1267,10 +1390,7 @@ function adjustRatio(axis, delta) {
     }
 }
 
-/*
- * Give the focused window an exact share of the split it sits in:
- * "Share 60" makes it take 60% (its sibling gets 40%).
- */
+/* Give the focused window pct% of its split. */
 function setShare(pct) {
     const win = activeTiled();
 
@@ -1304,15 +1424,7 @@ function resetRatios() {
     osd(smartOn ? "Sizes reset (smart sizing)" : "Sizes reset to " + percent(DEFAULT_RATIO));
 }
 
-/*
- * Convert the user's mouse resize into new sizes. What counts is WHICH EDGE
- * the user moved, not which window it was:
- *  - the end edge (right/bottom) of window i is the boundary of its own split
- *    i, if that split runs along this axis (otherwise it is the screen edge);
- *  - the start edge (left/top) is the boundary of the nearest earlier split on
- *    this axis (otherwise it is the screen edge).
- * So any edge shared with a neighbour can be dragged, on any window.
- */
+/* Turn a mouse resize into split ratios, by which edge was dragged. */
 function applyResize(win) {
     observedMin.clear();          // the user decided: relearn only what really refuses
 
@@ -1377,11 +1489,7 @@ function applyResize(win) {
 // Drag-to-swap
 // --------------------------------------------------
 
-/*
- * The topmost visible window under the cursor (other than the dragged one).
- * If it is a floating window, it blocks the drop: the drop landed on it, not
- * on the tile hidden underneath.
- */
+/* Topmost visible window under the cursor, other than the dragged one. */
 function windowAt(dragged) {
     const cursor = workspace.cursorPos;
     const order = workspace.stackingOrder;
@@ -1392,6 +1500,7 @@ function windowAt(dragged) {
         if (!cand || cand === dragged || cand.deleted || cand.minimized
             || !isCandidate(cand)
             || !onCurrentDesktop(cand)
+            || !onCurrentActivity(cand)
             || cand.output !== dragged.output)
             continue;
 
@@ -1430,12 +1539,7 @@ function swapByDrop(dragged) {
         swapWindows(dragged, hit);
 }
 
-/*
- * A floating window dropped on a tile joins the tiling. With room (fewer than
- * MAX_TILED tiles) it takes the target's position and the others shift along.
- * When the tiles are full it takes that tile and the replaced window floats
- * where the dragged one came from.
- */
+/* A floating window dropped on a tile takes its place. */
 function replaceByDrop(dragged, start) {
     if (!dragged || dragged.deleted)
         return;
@@ -1445,14 +1549,12 @@ function replaceByDrop(dragged, start) {
     if (!target || !contains(tiledOn(dragged.output), target))
         return;                    // dropped on empty space or on another floating window
 
-    // A floating window only snaps into the tiling when it is released over
-    // the target's title bar, so floating windows can be moved around freely.
+    // Floating windows only snap in when dropped on a title bar.
     if (!overTitleBar(target))
         return;
 
     if (!overflowSet.has(dragged) && tiledOn(dragged.output).length < MAX_TILED) {
-        // There is room: the window joins the tiling in the target's place and
-        // the target (and the ones after it) shift along. Nobody floats.
+        // Room left: it takes the target's place, the rest shift along.
         removeFromList(floatingWindows, dragged);
 
         if (!contains(windows, dragged))
@@ -1461,17 +1563,16 @@ function replaceByDrop(dragged, start) {
         removeFromList(windows, dragged);
         windows.splice(windows.indexOf(target), 0, dragged);
         arrange();
+        minimizeUntiled(dragged.output);
         osd("Tiled");
         return;
     }
 
     if (overflowSet.has(dragged)) {
-        // In the order beyond the limit: swapping order slots hands the
-        // tile to the dragged window and pushes the target beyond the limit.
+        // Beyond the limit: swapping order slots swaps tile and overflow.
         swapWindows(dragged, target);
     } else {
-        // Floated by you or by a class rule: it is not in the order, so the
-        // replaced window floats explicitly.
+        // Not in the order: the replaced window floats explicitly.
         removeFromList(floatingWindows, dragged);
         windows.splice(windows.indexOf(target), 1, dragged);
         floatingWindows.push(target);
@@ -1479,7 +1580,8 @@ function replaceByDrop(dragged, start) {
 
     arrange();
     sendFloatTo(target, start);
-    osd("\"" + target.caption + "\" floats");
+    minimizeUntiled(dragged.output);
+    osd("\"" + target.caption + "\" " + (minimizeOnTile ? "minimized" : "floats"));
 }
 
 function connectDragSwap(win) {
@@ -1559,8 +1661,6 @@ function trackWindow(win) {
     connectDragSwap(win);
 
     win.minimizedChanged.connect(function () {
-        dbg("minimized changed \"" + win.caption + "\" -> " + win.minimized);
-
         if (!win.minimized)
             sendToEnd(win);       // coming back from minimized = new arrival
 
@@ -1581,9 +1681,41 @@ function trackWindow(win) {
         arrange();
     });
 
-    // Mode 0 = restored. The signal fires BEFORE geometry changes, so on
-    // restore we wait for the first geometry change, then retile.
+    if (win.opacityChanged && win.opacityChanged.connect)
+        win.opacityChanged.connect(safe("opacityChanged", function (w, old) { onOpacityChanged(win, old); }));
+
+    if (win.activitiesChanged && win.activitiesChanged.connect) {
+        win.activitiesChanged.connect(function () {
+            sendToEnd(win);
+            arrange();
+        });
+    }
+
+    // Mode 0 = restored; fires before the geometry changes, so retile on the next change.
     win.maximizedAboutToChange.connect(function (mode) {
+        if (soloChanging)
+            return;
+
+        // A lone tile restored with the title-bar button floats.
+        if (soloMax.has(win)) {
+            if (mode !== 3) {
+                soloMax.delete(win);
+                removeFromList(windows, win);
+                floatingWindows.push(win);
+                placed.delete(win);
+                arrange();
+                osd("Floating");
+            }
+
+            return;
+        }
+
+        // Tracked for floating windows too, so they leave the state before moving.
+        if (mode === 0)
+            maximizedSet.delete(win);
+        else
+            maximizedSet.add(win);
+
         if (contains(floatingWindows, win))
             return;
 
@@ -1602,11 +1734,9 @@ function trackWindow(win) {
     });
 
     win.frameGeometryChanged.connect(function () {
-        if (debugOn && !arranging) {
-            const g = win.frameGeometry;
-
-            dbg("geometry changed (not by us) \"" + win.caption + "\" "
-                + Math.round(g.x) + "," + Math.round(g.y) + " " + Math.round(g.width) + "x" + Math.round(g.height));
+        if (pendingFloat.has(win)) {
+            finishFloat(win);
+            return;
         }
 
         if (arranging)
@@ -1622,13 +1752,7 @@ function trackWindow(win) {
     });
 }
 
-/*
- * After we assign a tile, an app can still end up at another size: it
- * refuses to shrink (minimum size) or resizes itself a moment later. If it
- * is clearly BIGGER than its tile, remember that as its minimum so the
- * neighbours make room; either way re-apply the tile. At most 3 attempts
- * per assigned tile, so this can never loop.
- */
+/* A window that stays bigger than its tile: remember that minimum and re-apply (at most 3 tries). */
 function checkSettled(win) {
     if (movingWindow || !contains(windows, win) || !isTileable(win) || overflowSet.has(win))
         return;
@@ -1667,8 +1791,7 @@ function checkSettled(win) {
     t.n++;
     fixTries.set(win, t);
 
-    // Only believe "it won't shrink" after the re-apply already failed once:
-    // a client that is slow to follow a new size looks the same for a moment.
+    // Only after a re-apply failed: a slow client looks the same for a moment.
     if (t.n >= 2 && (g.width > p.width + 2 || g.height > p.height + 2)) {
         const o = observedMin.get(win) || { width: 0, height: 0 };
 
@@ -1679,7 +1802,6 @@ function checkSettled(win) {
             o.height = Math.max(o.height, g.height);
 
         observedMin.set(win, o);
-        dbg("\"" + win.caption + "\" won't shrink below " + Math.round(o.width) + "x" + Math.round(o.height));
     }
 
     arrange();
@@ -1689,40 +1811,30 @@ function addWindow(win) {
     if (applySettings() && ready)
         arrange();            // e.g. a new tile limit
 
-    // Nothing you would tile opens this small: it is a tooltip-like overlay.
-    // Decided once, here, so a tile that later becomes narrow is unaffected.
+    // Opened this small: a tooltip-like overlay (decided once, at open).
     if (win && win.frameGeometry && !overlaySet.has(win)
         && (win.frameGeometry.width < 120 || win.frameGeometry.height < 60))
         overlaySet.add(win);
 
-    if (debugOn && win)
-        dbg("window appeared: \"" + win.caption + "\" " + describeFlags(win));
-
-    if (!isCandidate(win)) {
-        const why = whyNot(win);
-
-        // Tooltips and popups appear all the time: only mention them in debug mode.
-        const noisy = /^(tooltip|outline|doesn't take input|hidden from|KWin's own)/.test(why);
-
-        if (win && win.normalWindow && (!noisy || debugOn))
-            print("Alternating Tile: not tiling \"" + win.caption + "\" [class="
-                  + win.resourceClass + "]: " + why);
-
+    if (!isCandidate(win))
         return;
-    }
 
-    dbg("added \"" + win.caption + "\" [class=" + win.resourceClass + "]");
     trackWindow(win);
 
     const known = contains(floatingWindows, win)
         || contains(suspendedWindows, win)
         || contains(windows, win);
 
-    if (!known && matchesFloatClass(win)) {
-        // Quick-use app: opens floating, centred, and stays out of the tiles.
+    const reason = known ? "" : floatReason(win);
+
+    if (reason !== "") {
+        // Opens floating; quick-use apps are centred.
         floatingWindows.push(win);
         arrange();
-        centerOnScreen(win);
+
+        if (reason === "class")
+            centerOnScreen(win);
+
         raiseOnly(win);
         return;
     }
@@ -1745,9 +1857,11 @@ function forgetWindow(win) {
     openShare.delete(win);
     overflowSet.delete(win);
     overlaySet.delete(win);
+    maximizedSet.delete(win);
+    pendingFloat.delete(win);
+    soloMax.delete(win);
     observedMin.delete(win);
     fixTries.delete(win);
-    dbg("removed \"" + win.caption + "\"");
 
     if (movingWindow === win) {
         movingWindow = null;
@@ -1755,82 +1869,6 @@ function forgetWindow(win) {
     }
 
     arrange();
-}
-
-// --------------------------------------------------
-// Diagnostics
-// --------------------------------------------------
-
-function describeWindow(win) {
-    let state;
-
-    if (!isCandidate(win))                    state = "NOT TILED: " + whyNot(win);
-    else if (contains(floatingWindows, win))  state = "floating (you or a class rule floated it)";
-    else if (overflowSet.has(win))            state = "floating: more than " + MAX_TILED + " windows";
-    else if (contains(suspendedWindows, win)) state = "maximized, left out of the layout";
-    else if (win.minimized)                   state = "minimized";
-    else if (win.fullScreen)                  state = "fullscreen";
-    else if (!contains(windows, win))         state = "NOT TILED: not in the layout list";
-    else                                      state = "tiled, weight " + weightOf(win).toFixed(2);
-
-    return "  " + win.caption + "  [class=" + win.resourceClass
-        + ", name=" + win.resourceName + "]  ->  " + state;
-}
-
-function geometryReport(win) {
-    const p = placed.get(win);
-    const g = win.frameGeometry;
-    const o = observedMin.get(win);
-    const m = win.minSize;
-    let text = "     actual " + Math.round(g.width) + "x" + Math.round(g.height);
-
-    if (p) {
-        text += ", tile " + p.width + "x" + p.height;
-
-        if (g.width > p.width + 2 || g.height > p.height + 2)
-            text += "  <-- LARGER THAN ITS TILE";
-    }
-
-    if (m && (m.width > 0 || m.height > 0))
-        text += ", declared min " + Math.round(m.width) + "x" + Math.round(m.height);
-
-    if (o)
-        text += ", observed min " + Math.round(o.width) + "x" + Math.round(o.height);
-
-    return text;
-}
-
-function dumpState() {
-    const screen = currentScreen();
-    const key = layoutKey(screen);
-
-    print("Alternating Tile state: smart=" + (smartOn ? "on" : "off")
-          + " mirror=" + !!mirrored[key] + " gaps=" + (gapsOn ? "on" : "off")
-          + " innerGap=" + INNER_GAP + " outerGap=" + OUTER_GAP
-          + " maxTiled=" + MAX_TILED
-          + " manualSizes=" + JSON.stringify(manual[key] || {}));
-    print("  floating apps: " + Array.from(floatClassSet).join(", "));
-
-    const info = splitInfo[key];
-
-    if (info) {
-        print("  splits: " + info.splits.map(function (s, k) {
-            return k + ":" + s.axis + " " + percent(s.ratio);
-        }).join(", "));
-    }
-
-    // Tiling order first (this decides who sits where), then everything else.
-    const order = tiledOn(screen);
-
-    order.forEach(function (win, i) {
-        print("  #" + (i + 1) + describeWindow(win));
-        print(geometryReport(win));
-    });
-
-    for (const win of workspace.stackingOrder) {
-        if (win && win.normalWindow && order.indexOf(win) === -1)
-            print(describeWindow(win));
-    }
 }
 
 // --------------------------------------------------
@@ -1869,16 +1907,10 @@ shortcut("Rotate Windows Forward",  "Meta+Ctrl+R",       function () { rotateWin
 shortcut("Rotate Windows Backward", "Meta+Ctrl+Shift+R", function () { rotateWindows(-1); });
 shortcut("Mirror Layout", "Meta+Ctrl+M", mirrorLayout);
 shortcut("Toggle Gaps",   "Meta+Ctrl+G", toggleGaps);
-shortcut("Dump State to Log", "Meta+Ctrl+D", dumpState);
 shortcut("Toggle Float for This App", "Meta+Ctrl+F", toggleAppFloat);
 shortcut("Reload Settings", "", function () {
     osd(applySettings() ? "Settings reloaded" : "Settings unchanged");
     arrange();
-});
-shortcut("Toggle Debug Log", "Meta+Ctrl+Shift+D", function () {
-    debugOn = !debugOn;
-    print("Alternating Tile: debug log " + (debugOn ? "on" : "off"));
-    osd(debugOn ? "Debug log on" : "Debug log off");
 });
 
 // Unbound by default: the Tiling Controls widget (or you) can trigger these.
@@ -1908,8 +1940,6 @@ workspace.windowRemoved.connect(safe("windowRemoved", forgetWindow));
 
 if (workspace.windowActivated && workspace.windowActivated.connect) {
     workspace.windowActivated.connect(function (win) {
-        dbg("activated " + (win ? "\"" + win.caption + "\"" : "(none)"));
-
         if (win && isCandidate(win))
             lastFocused = win;
     });
@@ -1918,7 +1948,44 @@ if (workspace.windowActivated && workspace.windowActivated.connect) {
 workspace.currentDesktopChanged.connect(function () { arrange(); });
 workspace.screensChanged.connect(function () { arrange(); });
 
+if (workspace.currentActivityChanged && workspace.currentActivityChanged.connect)
+    workspace.currentActivityChanged.connect(function () { arrange(); });
+
+// Saving the settings page reconfigures KWin: apply the new settings at once.
+if (typeof options !== "undefined" && options && options.configChanged && options.configChanged.connect) {
+    options.configChanged.connect(safe("configChanged", function () {
+        if (applySettings())
+            arrange();
+    }));
+}
+
+if (typeof registerUserActionsMenu === "function") {
+    registerUserActionsMenu(function (win) {
+        if (!win || !isCandidate(win))
+            return null;
+
+        const appTiled = floatReason(win) === "";     // would a new window of this app tile?
+
+        // Also for apps that draw their own title bar (Alt+F3).
+        return {
+            text: "Tiling",
+            items: [{
+                text: "Tile this window",
+                checkable: true,
+                checked: !isFloatingNow(win),
+                triggered: safe("Tile this window", function () { toggleWindowFloating(win); })
+            }, {
+                text: "Always tile this app",
+                checkable: true,
+                checked: appTiled,
+                triggered: safe("Always tile this app", function () { setAppTiled(win, !appTiled); })
+            }]
+        };
+    });
+}
+
 applySettings();
+loadSavedApps();
 
 for (const win of workspace.stackingOrder) {
     if (!isCandidate(win))
@@ -1926,7 +1993,7 @@ for (const win of workspace.stackingOrder) {
 
     trackWindow(win);
 
-    if (matchesFloatClass(win)) {
+    if (floatReason(win) !== "") {
         if (!contains(floatingWindows, win))
             floatingWindows.push(win);      // already open: float it where it is
     } else if (!contains(windows, win)) {
@@ -1937,7 +2004,3 @@ for (const win of workspace.stackingOrder) {
 lastFocused = focusedWindow();
 arrange();
 ready = true;
-
-print("Alternating Master Stack v1.7 loaded: max " + MAX_TILED + " tiled, smart sizing " + (smartOn ? "on" : "off")
-      + ", innerGap=" + INNER_GAP + ", outerGap=" + OUTER_GAP
-      + ", ignored=" + IGNORED_CLASSES.join("|"));

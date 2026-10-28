@@ -7,6 +7,35 @@
   </property>
   <layout class="QVBoxLayout" name="mainLayout">
    <item>
+    <widget class="QGroupBox" name="groupMode">
+     <property name="title"><string>Floating first</string></property>
+     <layout class="QVBoxLayout" name="modeLayout">
+      <item>
+       <widget class="QCheckBox" name="kcfg_floatAll">
+        <property name="text"><string>All windows open floating; only the apps you choose tile</string></property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="kcfg_middleClickToggle">
+        <property name="text"><string>Middle-click a title bar (or Meta+middle-click anywhere in a window) to tile / float it</string></property>
+        <property name="toolTip"><string>Needs middle-click bound to "Decrease opacity": install with --middle-click, or set it under Window Management &gt; Window Behavior &gt; Titlebar Actions and Window Actions. Not compatible with window rules that change the opacity of inactive windows by exactly 10%.</string></property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="kcfg_minimizeOnTile">
+        <property name="text"><string>When you tile a window, minimize the windows that aren't tiles (so none hides behind the tiles)</string></property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="labelMode">
+        <property name="text"><string>Float / tile one window with the window menu (Alt+F3) &gt; Tiling, or the Tiling Controls widget (middle-click its icon). "Always tile this app" there and Meta+Ctrl+F change a whole app and are remembered.</string></property>
+        <property name="wordWrap"><bool>true</bool></property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
     <widget class="QGroupBox" name="groupFloat">
      <property name="title"><string>Open floating instead of tiling</string></property>
      <layout class="QVBoxLayout" name="floatLayout">
@@ -93,7 +122,7 @@
    </item>
    <item>
     <widget class="QGroupBox" name="groupLimit">
-     <property name="title"><string>Limit</string></property>
+     <property name="title"><string>Layout</string></property>
      <layout class="QFormLayout" name="limitLayout">
       <item row="0" column="0">
        <widget class="QLabel" name="labelMax"><property name="text"><string>Most windows tiled:</string></property></widget>
@@ -102,6 +131,31 @@
        <widget class="QSpinBox" name="kcfg_maxTiled">
         <property name="minimum"><number>1</number></property>
         <property name="maximum"><number>12</number></property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="labelGapInner"><property name="text"><string>Gap between windows:</string></property></widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QSpinBox" name="kcfg_gapInner">
+        <property name="suffix"><string> px</string></property>
+        <property name="minimum"><number>0</number></property>
+        <property name="maximum"><number>64</number></property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="labelGapOuter"><property name="text"><string>Gap at the screen edge:</string></property></widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="QSpinBox" name="kcfg_gapOuter">
+        <property name="suffix"><string> px</string></property>
+        <property name="minimum"><number>0</number></property>
+        <property name="maximum"><number>64</number></property>
+       </widget>
+      </item>
+      <item row="3" column="0" colspan="2">
+       <widget class="QCheckBox" name="kcfg_osdMessages">
+        <property name="text"><string>Show a short on-screen message after changes</string></property>
        </widget>
       </item>
      </layout>
@@ -121,7 +175,7 @@
       <item row="1" column="1"><widget class="QLineEdit" name="kcfg_alwaysTile"/></item>
       <item row="2" column="0" colspan="2">
        <widget class="QLabel" name="labelHint">
-        <property name="text"><string>Window classes, separated by commas. Case is ignored. "Always tile" wins over every category above. Press Meta+Ctrl+F on a window to see its class in the log.</string></property>
+        <property name="text"><string>Window classes, separated by commas. Case is ignored. "Always tile" wins over every category above. Press Meta+Ctrl+F on a window to see its class.</string></property>
         <property name="wordWrap"><bool>true</bool></property>
        </widget>
       </item>
@@ -130,7 +184,7 @@
    </item>
    <item>
     <widget class="QLabel" name="labelApply">
-     <property name="text"><string>Changes reach windows you open from now on. Windows that are already open keep their state (Meta+Shift+F toggles one). To apply everything, turn the script off and on again in KWin Scripts.</string></property>
+     <property name="text"><string>The tile limit, gaps and messages apply as soon as you press Apply. Floating rules reach windows you open from now on; windows that are already open keep their state (Meta+Shift+F toggles one). To apply everything, turn the script off and on again in KWin Scripts.</string></property>
      <property name="wordWrap"><bool>true</bool></property>
     </widget>
    </item>
